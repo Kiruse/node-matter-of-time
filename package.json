@@ -1,0 +1,33 @@
+{
+  "name": "matter-of-time",
+  "version": "1.0.0",
+  "description": "A Date extension library to make it what it should've always been.",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kiruse/node-matter-of-time.git"
+  },
+  "keywords": [
+    "Date",
+    "extension",
+    "time",
+    "timespan",
+    "duration",
+    "arithmetic",
+    "quality",
+    "of",
+    "life"
+  ],
+  "author": "Kiruse",
+  "license": "GPL-3.0",
+  "bugs": {
+    "url": "https://github.com/Kiruse/node-matter-of-time/issues"
+  },
+  "homepage": "https://github.com/Kiruse/node-matter-of-time#readme",
+  "devDependencies": {
+    "mocha": "^5.2.0"
+  }
+}
