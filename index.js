@@ -5,6 +5,8 @@
 // License: GNU GPL 3.0
 "use strict";
 
+const longMonths = [0, 3, 5, 7, 8, 10, 12];
+
 let MatterOfTime = module.exports = class extends Date {
     constructor(...args) {
         // Forward constructor arguments
@@ -57,6 +59,10 @@ let MatterOfTime = module.exports = class extends Date {
             friday   : () => calcNextWeekdayDate.call(this, 5),
             saturday : () => calcNextWeekdayDate.call(this, 6),
             sunday   : () => calcNextWeekdayDate.call(this, 0),
+            
+            week: (repeat) => {return MatterOfTime.weeks(repeat).from(this)},
+            month: (repeat, vanilla) => {return this.addMonths(repeat, vanilla)},
+            year: (repeat, vanilla) => {return this.addYears(repeat, vanilla)},
         }
 
         /**
@@ -73,7 +79,75 @@ let MatterOfTime = module.exports = class extends Date {
             friday   : () => calcLastWeekdayDate.call(this, 5),
             saturday : () => calcLastWeekdayDate.call(this, 6),
             sunday   : () => calcLastWeekdayDate.call(this, 0),
+            
+            week: (repeat) => {return MatterOfTime.weeks(-repeat).from(this)},
+            month: (repeat, vanilla) => {return this.addMonths(-repeat, vanilla)},
+            year: (repeat, vanilla) => {return this.addYears(-repeat, vanilla)},
         }
+    }
+    
+    /**
+     * Adds this date to the other date and returns the result. Useful for
+     * computing timely offsets, e.g. "3 hours from now"
+     * 
+     * Example:
+     * 
+     *      const Mot = require('matter-of-time');
+     *      Mot.hours(3).from(Mot.now());
+     * 
+     * @param {Number|Date|MatterOfTime} other
+     * @returns {MatterOfTime}
+     */
+    from(other) {
+        return new MatterOfTime(other.valueOf() + this.valueOf());
+    }
+    
+    addYears(count, vanilla) {
+        if (typeof count !== 'number' || count < 1) count = 1;
+        vanilla = !!vanilla;
+        
+        let copy = new MatterOfTime(this);
+        
+        // Extended behavior merely accounts for leap years
+        if (!vanilla && copy.getMonth() === 1 && copy.isLastOfMonth()) {
+            copy.setDate(1);
+            copy.setFullYear(copy.getFullYear() + count);
+            copy.setDate(MatterOfTime.getLastDateOfMonth(copy.getMonth(), copy.getFullYear()));
+        }
+        
+        else {
+            copy.setFullYear(copy.getFullYear() + count);
+        }
+        
+        return copy;
+    }
+    
+    addMonths(repeat, vanilla) {
+        if (typeof repeat !== 'number' || repeat < 1) repeat = 1;
+        vanilla = !!vanilla;
+        
+        let copy = new MatterOfTime(this);
+        
+        // Our extended behavior automatically adjusts jumping from the
+        // last day of a month to the last day of the next.
+        if (!vanilla && copy.isLastOfMonth()) {
+            const relativeMonth = this.getMonth() + repeat;
+            const targetMonth = relativeMonth % 12;
+            const targetYear  = copy.getFullYear() + Math.floor(relativeMonty / 12);
+            
+            copy.setDate(1);
+            copy.setFullYear(targetYear);
+            copy.setMonth(targetMonth);
+            copy.setDate(MatterOfTime.getLastDateOfMonth(targetMonth, targetYear));
+        }
+        
+        // Vanilla behavior just adds to or subtracts from the month portion of the date, which may yield
+        // undesirable results, such as jumping from Oct. 31st to Oct. 1st
+        else {
+            copy.setMonth(copy.getMonth() + repeat);
+        }
+        
+        return copy;
     }
     
     /**
@@ -84,6 +158,58 @@ let MatterOfTime = module.exports = class extends Date {
     in(year) {
         this.setFullYear(year);
         return this;
+    }
+    
+    /**
+     * Tests if the represented date is the last in its month.
+     * @returns {Boolean}
+     */
+    isLastOfMonth() {
+        const month = this.getMonth();
+        const date  = this.getDate();
+        
+        if (month === 2) {
+            if (this.getFullYear() % 4) return date === 29
+            return date === 28;
+        }
+        else if (longMonths.indexOf(month) !== -1) {
+            return date === 31;
+        }
+        else {
+            return date === 30;
+        }
+    }
+    
+    /**
+     * Convenience method to create a new MatterOfTime instance from Date.now(),
+     * for consistency in usage.
+     * @returns {MatterOfTime}
+     */
+    static now() { return new MatterOfTime(Date.now()); }
+    
+    /**
+     * Calculates the last date in the target month of the target year.
+     * @param {Number} targetMonth 
+     * @param {Number} targetYear 
+     * @return {Number}
+     */
+    static getLastDateOfMonth(targetMonth, targetYear) {
+        // Target month is February - easy case
+        if (targetMonth === 1) {
+            // Consider leap years
+            if (targetYear % 4) return 29;
+            else return 28;
+        }
+        
+        // Target month has 31 days - easiest case
+        else if (longMonths.indexOf(targetMonth) !== -1) {
+            return 31;
+        }
+        
+        // Target month has 30 days
+        else {
+            return 30;
+        }
     }
     
     ////////////////////////////////////////////////////////////////////////////
