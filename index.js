@@ -5,7 +5,7 @@
 // License: GNU GPL 3.0
 "use strict";
 
-const longMonths = [0, 3, 5, 7, 8, 10, 12];
+const longMonths = [0, 2, 4, 6, 7, 9, 11];
 
 let MatterOfTime = module.exports = class extends Date {
     constructor(...args) {
@@ -60,9 +60,18 @@ let MatterOfTime = module.exports = class extends Date {
             saturday : () => calcNextWeekdayDate.call(this, 6),
             sunday   : () => calcNextWeekdayDate.call(this, 0),
             
-            week: (repeat) => {return MatterOfTime.weeks(repeat).from(this)},
-            month: (repeat, vanilla) => {return this.addMonths(repeat, vanilla)},
-            year: (repeat, vanilla) => {return this.addYears(repeat, vanilla)},
+            week: (repeat) => {
+                if (typeof repeat !== 'number' || repeat < 1) repeat = 1;
+                return MatterOfTime.weeks(repeat).from(this);
+            },
+            month: (repeat, vanilla) => {
+                if (typeof repeat !== 'number' || repeat < 1) repeat = 1;
+                return this.addMonths(repeat, vanilla);
+            },
+            year: (repeat, vanilla) => {
+                if (typeof repeat !== 'number' || repeat < 1) repeat = 1;
+                return this.addYears(repeat, vanilla);
+            },
         }
 
         /**
@@ -80,10 +89,70 @@ let MatterOfTime = module.exports = class extends Date {
             saturday : () => calcLastWeekdayDate.call(this, 6),
             sunday   : () => calcLastWeekdayDate.call(this, 0),
             
-            week: (repeat) => {return MatterOfTime.weeks(-repeat).from(this)},
-            month: (repeat, vanilla) => {return this.addMonths(-repeat, vanilla)},
-            year: (repeat, vanilla) => {return this.addYears(-repeat, vanilla)},
+            week: (repeat) => {
+                if (typeof repeat !== 'number' || repeat < 1) repeat = 1;
+                return MatterOfTime.weeks(-repeat).from(this);
+            },
+            month: (repeat, vanilla) => {
+                if (typeof repeat !== 'number' || repeat < 1) repeat = 1;
+                return this.addMonths(-repeat, vanilla);
+            },
+            year: (repeat, vanilla) => {
+                if (typeof repeat !== 'number' || repeat < 1) repeat = 1;
+                return this.addYears(-repeat, vanilla);
+            },
         }
+    }
+    
+    /**
+     * Adjusts this date's time to the representing string.
+     * 
+     * String is expected to be in the format of
+     * 
+     *     HH:MM:SS.XXX am|pm
+     * 
+     * Where HH may be any value from 0-24, MM and SS may be anything from 0-59,
+     * and X may be any digit.
+     * 
+     * am|pm may be set if HH <= 12.
+     * 
+     * Any portion of the time format may be omitted, including the separating
+     * characters when appropriate. XXX may be up to three digits.
+     * @param {string} time A formatted string representing the time to adjust to.
+     * @chainable
+     */
+    at(time) {
+        let matches = time.match(/^\s*([0-2]?\d)(:([0-5]\d)(:([0-5]\d)(.(\d{1,3}))?)?)?(\s*(am|pm))?$/);
+        if (!matches) throw Error('Invalid input format, expected HH[:MM[:SS[.MS]]] [am|pm]');
+        
+        const hours   = parseInt(matches[1]),
+              minutes = parseInt(matches[3]),
+              seconds = parseInt(matches[5]),
+              millis  = parseInt(matches[7]),
+              ampm    = matches[9];
+        
+        if (isNaN(hours)) throw Error('Need at least hours to set');
+        this.setHours(hours);
+        
+        if (!isNaN(minutes)) {
+            this.setMinutes(minutes);
+        }
+        if (!isNaN(seconds)) {
+            this.setSeconds(seconds);
+        }
+        if (!isNaN(millis)) {
+            this.setMilliseconds(millis);
+        }
+        
+        if (ampm) {
+            if (hours > 12) throw Error('Unexpted am/pm specifier in 24h format');
+            if (this.getHours() === 12) {
+                this.setHours(0); // 12am == 00:00 in 24hr format
+            }
+            if (ampm.toLowerCase() === 'pm') this.setHours(this.getHours() + 12);
+        }
+        
+        return this;
     }
     
     /**
@@ -102,8 +171,30 @@ let MatterOfTime = module.exports = class extends Date {
         return new MatterOfTime(other.valueOf() + this.valueOf());
     }
     
+    /**
+     * Gets a new MatterOfTime instance representing tomorrow with respect to
+     * this date.
+     * 
+     * Yields the same result as `MatterOfTime.days(1).from(this)`.
+     * @returns {MatterOfTime}
+     */
+    tomorrow() {
+        return MatterOfTime.days(1).from(this);
+    }
+    
+    /**
+     * Gets a new MatterOfTime instance representing yesterday with respect to
+     * this date.
+     * 
+     * * Yields the same result as `MatterOfTime.days(-1).from(this)`.
+     * @returns {MatterOfTime}
+     */
+    yesterday() {
+        return MatterOfTime.days(-1).from(this);
+    }
+    
     addYears(count, vanilla) {
-        if (typeof count !== 'number' || count < 1) count = 1;
+        if (typeof count !== 'number') throw Error('Expected number of years to add');
         vanilla = !!vanilla;
         
         let copy = new MatterOfTime(this);
@@ -112,7 +203,7 @@ let MatterOfTime = module.exports = class extends Date {
         if (!vanilla && copy.getMonth() === 1 && copy.isLastOfMonth()) {
             copy.setDate(1);
             copy.setFullYear(copy.getFullYear() + count);
-            copy.setDate(MatterOfTime.getLastDateOfMonth(copy.getMonth(), copy.getFullYear()));
+            copy.setDate(MatterOfTime.getLastDateOfMonth(1, copy.getFullYear()));
         }
         
         else {
@@ -123,7 +214,7 @@ let MatterOfTime = module.exports = class extends Date {
     }
     
     addMonths(repeat, vanilla) {
-        if (typeof repeat !== 'number' || repeat < 1) repeat = 1;
+        if (typeof repeat !== 'number') throw Error('Expected number of months to add');
         vanilla = !!vanilla;
         
         let copy = new MatterOfTime(this);
@@ -133,7 +224,7 @@ let MatterOfTime = module.exports = class extends Date {
         if (!vanilla && copy.isLastOfMonth()) {
             const relativeMonth = this.getMonth() + repeat;
             const targetMonth = relativeMonth % 12;
-            const targetYear  = copy.getFullYear() + Math.floor(relativeMonty / 12);
+            const targetYear  = copy.getFullYear() + Math.floor(relativeMonth / 12);
             
             copy.setDate(1);
             copy.setFullYear(targetYear);
@@ -156,8 +247,7 @@ let MatterOfTime = module.exports = class extends Date {
      * @chainable
      */
     in(year) {
-        this.setFullYear(year);
-        return this;
+        return this.addYears(year - this.getFullYear());
     }
     
     /**
@@ -165,11 +255,19 @@ let MatterOfTime = module.exports = class extends Date {
      * @returns {Boolean}
      */
     isLastOfMonth() {
-        const month = this.getMonth();
-        const date  = this.getDate();
-        
-        if (month === 2) {
-            if (this.getFullYear() % 4) return date === 29
+        return MatterOfTime.isLastOfMonth(this.getFullYear(), this.getMonth(), this.getDate());
+    }
+    
+    /**
+     * Tests if the given date is the last of the month in the given year.
+     * @param {Number} year 
+     * @param {Number} month 
+     * @param {Number} date 
+     * @returns {Boolean}
+     */
+    static isLastOfMonth(year, month, date) {
+        if (month === 1) {
+            if (year % 4 === 0) return date === 29
             return date === 28;
         }
         else if (longMonths.indexOf(month) !== -1) {
@@ -188,6 +286,18 @@ let MatterOfTime = module.exports = class extends Date {
     static now() { return new MatterOfTime(Date.now()); }
     
     /**
+     * Shorthand method for `MatterOfTime.now().tomorrow()` for consistency.
+     * @returns {MatterOfTime}
+     */
+    static tomorrow() { return MatterOfTime.now().tomorrow(); }
+    
+    /**
+     * Shorthand method for `MatterOfTime.now().yesterday()` for consistency.
+     * @returns {MatterOfTime}
+     */
+    static yesterday() { return MatterOfTime.now().yesterday(); }
+    
+    /**
      * Calculates the last date in the target month of the target year.
      * @param {Number} targetMonth 
      * @param {Number} targetYear 
@@ -197,7 +307,7 @@ let MatterOfTime = module.exports = class extends Date {
         // Target month is February - easy case
         if (targetMonth === 1) {
             // Consider leap years
-            if (targetYear % 4) return 29;
+            if (targetYear % 4 === 0) return 29;
             else return 28;
         }
         
@@ -385,12 +495,13 @@ function calcUpcomingWeekdayDate(day) {
  * the year `year` at midnight.
  * @see MatterOfTime#in
  * @param {Number} index Index of the month, from 1 to 12 where 1 = January and 12 = December.
- * @param {Number} year? Optional year to set. Defaults to this year.
+ * @param {Number} date? Optional date to set. Defaults to the 1st of the month.
  * @returns {MatterOfTime}
  */
-MatterOfTime.month = function(index, day) {
+MatterOfTime.month = function(index, date) {
     if (index < 1 || index > 12);
-    return new MatterOfTime(new MatterOfTime().getFullYear(), index - 1, day);
+    const tmp = new Date(), year = tmp.getFullYear(), month = index - 1;
+    return new MatterOfTime(year, month, Math.min(MatterOfTime.getLastDateOfMonth(month, date), date));
 }
 
 /**
