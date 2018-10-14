@@ -127,7 +127,7 @@ Examples:
     MatterOfTime.now().next.month(2)
     MatterOfTime.now().next.year(4)
 
-### Time Adjustment
+## Time Adjustment
 
 There's a single method available to adjust the time through a formatted string.
 
