@@ -9,7 +9,23 @@ String parsing is nice and all, but strings cannot be processed by linters and
 are often exempt from refactorization. If the API changes, strings that once
 were valid suddenly break without notice or reason as to why.
 
+# Installation
+
+Install via npm:
+
+    npm i --save matter-of-time
+
+Has no dependencies, but one dev dep for the unit tests.
+
 # API Facets
+
+The API exports a class with various static methods. Import like so:
+
+    let MatterOfTime = require('matter-of-time');
+    
+For convenience, you might consider overriding `Date` instead:
+
+    let Date = require('matter-of-time');
 
 See [the unit tests](test/test.js) for more use cases!
 

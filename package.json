@@ -1,6 +1,6 @@
 {
   "name": "matter-of-time",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "A Date extension library to make it what it should've always been.",
   "main": "index.js",
   "scripts": {
